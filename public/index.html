@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KERNEL_CHAT // SECURE SHELL</title>
+<style>
+  :root {
+    --neon: #00ff9c;
+    --neon2: #00c3ff;
+    --danger: #ff0055;
+    --bg: #03070a;
+    --panel: #0a1418;
+    --border: rgba(0, 255, 156, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(0,255,156,0.08), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(0,195,255,0.08), transparent 40%),
+      var(--bg);
+    color: var(--neon);
+    font-family: "Courier New", "Consolas", monospace;
+    overflow-x: hidden;
+  }
+
+  /* پس‌زمینه شبکه‌ای */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,156,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,156,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    animation: gridMove 12s linear infinite;
+    z-index: 0;
+  }
+
+  @keyframes gridMove {
+    from { background-position: 0 0; }
+    to   { background-position: 40px 40px; }
+  }
+
+  /* اسکن‌لاین CRT */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15) 0px,
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 860px;
+    margin: 30px auto;
+    padding: 0 16px;
+  }
+
+  .title {
+    text-align: center;
+    font-size: 22px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px var(--neon), 0 0 20px var(--neon);
+    animation: flicker 4s infinite;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: var(--neon2);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+    opacity: 0.7;
+  }
+
+  @keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+    20%, 22%, 24%, 55% { opacity: 0.5; }
+  }
+
+  .panel {
+    background: rgba(10, 20, 24, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px;
+    box-shadow:
+      0 0 20px rgba(0,255,156,0.15),
+      inset 0 0 30px rgba(0,255,156,0.03);
+    backdrop-filter: blur(4px);
+  }
+
+  /* ---------- LOGIN ---------- */
+  #loginView .panel { max-width: 380px; margin: 0 auto; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    color: var(--neon2);
+  }
+
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--neon);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 14px;
+    transition: 0.2s;
+  }
+
+  input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 12px rgba(0,255,156,0.5);
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--neon);
+    color: var(--neon);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: 0.2s;
+    text-transform: uppercase;
+  }
+
+  button:hover {
+    background: var(--neon);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon);
+  }
+
+  .error {
+    color: var(--danger);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 10px;
+    text-shadow: 0 0 8px var(--danger);
+    min-height: 16px;
+  }
+
+  /* ---------- CHAT ---------- */
+  #chatView { display: none; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--neon2);
+  }
+
+  .topbar .user-tag {
+    color: var(--neon);
+    text-shadow: 0 0 8px var(--neon);
+  }
+
+  #messages {
+    height: 420px;
+    overflow-y: auto;
+    padding: 14px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  #messages::-webkit-scrollbar { width: 8px; }
+  #messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  .msg {
+    margin-bottom: 10px;
+    animation: fadeIn 0.25s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .msg .meta {
+    font-size: 11px;
+    color: var(--neon2);
+    opacity: 0.8;
+    margin-left: 6px;
+  }
+
+  .msg .name {
+    color: var(--neon);
+    font-weight: bold;
+    text-shadow: 0 0 6px var(--neon);
+  }
+
+  .msg .text {
+    color: #d7fff1;
+    word-break: break-word;
+  }
+
+  /* 👑 پیام سلطنتی */
+  .msg.royal .name {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ffaa00;
+  }
+
+  .msg.royal .text {
+    color: #fff3c4;
+  }
+
+  .msg.royal .crown {
+    filter: drop-shadow(0 0 6px #ffd700);
+  }
+
+  .system {
+    text-align: center;
+    font-size: 12px;
+    color: var(--neon2);
+    opacity: 0.75;
+    margin: 8px 0;
+    font-style: italic;
+  }
+
+  .system.royal {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ffd700;
+    font-weight: bold;
+    font-style: normal;
+  }
+
+  .input-row { display: flex; gap: 10px; }
+  .input-row input { margin: 0; flex: 1; }
+  .input-row button { width: auto; padding: 12px 22px; }
+
+  .status {
+    font-size: 10px;
+    color: var(--neon2);
+    opacity: 0.6;
+    text-align: center;
+    margin-top: 10px;
+    letter-spacing: 1px;
+  }
+
+  .cursor::after {
+    content: "█";
+    animation: blink 1s steps(2) infinite;
+    margin-right: 4px;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">⟁ KERNEL_CHAT ⟁</div>
+  <div class="subtitle">SECURE SHELL v3.1 // ENCRYPTED CHANNEL</div>
+
+  <!-- ========== LOGIN ========== -->
+  <div id="loginView">
+    <div class="panel">
+      <label>USERNAME</label>
+      <input id="username" autocomplete="off" placeholder="> enter username" />
+
+      <label>PASSWORD</label>
+      <input id="password" type="password" placeholder="> enter password" />
+
+      <button id="loginBtn">[ AUTHENTICATE ]</button>
+      <div class="error" id="loginError"></div>
+    </div>
+    <div class="status">STATUS: AWAITING CREDENTIALS...</div>
+  </div>
+
+  <!-- ========== CHAT ========== -->
+  <div id="chatView">
+    <div class="panel">
+      <div class="topbar">
+        <span>CONNECTED AS: <span class="user-tag" id="me"></span></span>
+        <span id="connStatus">● ONLINE</span>
+      </div>
+
+      <div id="messages"></div>
+
+      <div class="input-row">
+        <input id="msgInput" placeholder="> type message..." autocomplete="off" />
+        <button id="sendBtn">SEND</button>
+      </div>
+    </div>
+    <div class="status">STATUS: <span class="cursor">SESSION ACTIVE</span></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const loginView  = document.getElementById("loginView");
+  const chatView   = document.getElementById("chatView");
+  const usernameEl = document.getElementById("username");
+  const passwordEl = document.getElementById("password");
+  const loginBtn   = document.getElementById("loginBtn");
+  const loginError = document.getElementById("loginError");
+  const meEl       = document.getElementById("me");
+  const messagesEl = document.getElementById("messages");
+  const msgInput   = document.getElementById("msgInput");
+  const sendBtn    = document.getElementById("sendBtn");
+
+  let ws = null;
+  let myName = "";
+  let myRoyal = false;
+
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const WS_URL = `${proto}://${location.host}`;
+
+  function connect() {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      loginError.textContent = "";
+    };
+
+    ws.onmessage = (ev) => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch { return; }
+
+      if (data.type === "login_error") {
+        loginError.textContent = "✖ " + data.message;
+        return;
+      }
+
+      if (data.type === "login_success") {
+        myName = data.username;
+        myRoyal = !!data.isRoyal;
+        meEl.textContent = (myRoyal ? "👑 " : "") + myName;
+        loginView.style.display = "none";
+        chatView.style.display = "block";
+        msgInput.focus();
+        return;
+      }
+
+      if (data.type === "system") {
+        const div = document.createElement("div");
+        div.className = "system" + (data.royal ? " royal" : "");
+        div.textContent = data.message;
+        messagesEl.appendChild(div);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return;
+      }
+
+      if (data.type === "message") {
+        const wrap = document.createElement("div");
+        wrap.className = "msg" + (data.isRoyal ? " royal" : "");
+
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = `[${data.time}]`;
+
+        const name = document.createElement("span");
+        name.className = "name";
+        name.textContent = (data.isRoyal ? "👑 " : "") + data.username + ":";
+
+        const text = document.createElement("span");
+        text.className = "text";
+        text.textContent = " " + data.text;
+
+        wrap.appendChild(meta);
+        wrap.appendChild(name);
+        wrap.appendChild(text);
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    };
+
+    ws.onclose = () => {
+      const s = document.getElementById("connStatus");
+      if (s) s.textContent = "● OFFLINE";
+    };
+  }
+
+  function send(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  }
+
+  loginBtn.addEventListener("click", () => {
+    const u = usernameEl.value.trim();
+    const p = passwordEl.value;
+    if (!u || !p) {
+      loginError.textContent = "✖ نام کاربری و رمز را وارد کن";
+      return;
+    }
+    connect();
+    // بعد از اتصال، لاگین بفرست
+    const tryLogin = () => {
+      if (ws.readyState === 1) {
+        send({ type: "login", username: u, password: p });
+      } else {
+        setTimeout(tryLogin, 50);
+      }
+    };
+    tryLogin();
+  });
+
+  passwordEl.addEventListener("keydown", e => {
+    if (e.key === "Enter") loginBtn.click();
+  });
+
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    send({ type: "message", text });
+    msgInput.value = "";
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  msgInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") sendMessage();
+  });
+})();
+</script>
+</body>
+</html>
