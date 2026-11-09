@@ -7,13 +7,6 @@ const { WebSocketServer } = require("ws");
 
 const app = express();
 app.set("trust proxy", 1);
-
-const server = http.createServer(app);
-const PORT = process.env.PORT || 3000;
-const SITE_PASSWORD = process.env.SITE_PASSWORD || "";
-const SESSION_SECRET = process.env.SESSION_SECRET || "";
-const SESSION_SECONDS = 7 * 24 * 60 * 60;
-
 // ==============================
 // CHAT USERS
 // ==============================
