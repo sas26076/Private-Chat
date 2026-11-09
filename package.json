@@ -1,0 +1,13 @@
+{
+  "name": "temporary-group-chat",
+  "version": "1.0.0",
+  "description": "Temporary real-time group chat with 10 editable users",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
